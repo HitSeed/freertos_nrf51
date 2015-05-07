@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="CORTEX_M0_nRF51_GCC" />
+		<Option makefile_is_custom="1" />
+		<Option pch_mode="2" />
+		<Option compiler="gnu_gcc_arm_cross-compiler" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/CORTEX_M0_nRF51_GCC" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gnu_gcc_arm_cross-compiler" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+				<MakeCommands>
+					<Build command="$make -kf $makefile " />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -kf $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -kq -f $makefile " />
+					<SilentBuild command="$make -kf $makefile  &gt; $(CMD_NULL)" />
+				</MakeCommands>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/CORTEX_M0_nRF51_GCC" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gnu_gcc_arm_cross-compiler" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+				<MakeCommands>
+					<Build command="$make -kf $makefile" />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -kf $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -kq -f $makefile " />
+					<SilentBuild command="$make -kf $makefile &gt; $(CMD_NULL)" />
+				</MakeCommands>
+			</Target>
+			<Target title="dist">
+				<Option output="CORTEX_M0_nRF51_GCC" prefix_auto="1" extension_auto="1" />
+				<Option type="0" />
+				<Option compiler="gnu_gcc_arm_cross-compiler" />
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="FreeRTOSConfig.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="Makefile">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="Makefile.common">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="README.md">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
