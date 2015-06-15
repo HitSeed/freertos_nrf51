@@ -75,6 +75,8 @@
 extern "C" {
 #endif
 
+#include "nrf_soc.h"
+
 /*-----------------------------------------------------------
  * Port specific definitions.
  *
@@ -133,11 +135,17 @@ extern void vPortEnterCritical( void );
 extern void vPortExitCritical( void );
 extern uint32_t ulSetInterruptMaskFromISR( void ) __attribute__((naked));
 extern void vClearInterruptMaskFromISR( uint32_t ulMask )  __attribute__((naked));
+void vPortDisableInterrupts();
+void vPortEnableInterrupts();
+
+extern uint8_t 	g_is_nested_critical_region, g_count_nested_critical_region;
 
 #define portSET_INTERRUPT_MASK_FROM_ISR()		ulSetInterruptMaskFromISR()
 #define portCLEAR_INTERRUPT_MASK_FROM_ISR(x)	vClearInterruptMaskFromISR( x )
-#define portDISABLE_INTERRUPTS()				__asm volatile 	( " cpsid i " )
-#define portENABLE_INTERRUPTS()					__asm volatile 	( " cpsie i " )
+
+#define portDISABLE_INTERRUPTS()				vPortDisableInterrupts()
+#define portENABLE_INTERRUPTS()					vPortEnableInterrupts()
+
 #define portENTER_CRITICAL()					vPortEnterCritical()
 #define portEXIT_CRITICAL()						vPortExitCritical()
 

@@ -79,6 +79,9 @@
 #include "nrf.h"
 #include "softdevice_handler.h"
 
+//#define HACK
+
+
 /* Constants required to manipulate the NVIC. */
 #if 0
 #define portNVIC_SYSTICK_CTRL		( ( volatile uint32_t *) 0xe000e010 )
@@ -105,6 +108,8 @@ debugger. */
 #else
 	#define portTASK_RETURN_ADDRESS	prvTaskExitError
 #endif
+
+uint8_t g_is_nested_critical_region = 0, g_count_nested_critical_region = 0;
 
 /* Each task maintains its own interrupt status in the critical nesting
 variable. */
@@ -191,7 +196,9 @@ void vPortStartFirstTask( void )
 	"	msr CONTROL, r0				\n"
 	"	pop {r0-r5}					\n" /* Pop the registers that are saved automatically. */
 	"	mov lr, r5					\n" /* lr is now in r5. */
+#ifndef HACK
 	"	cpsie i						\n" /* The first task has its context and interrupts can be enabled. */
+#endif
 	"	pop {pc}					\n" /* Finally, pop the PC to jump to the user defined task code. */
 	"								\n"
 	"	.align 2					\n"
@@ -218,6 +225,10 @@ BaseType_t xPortStartScheduler( void )
 
 	/* Start the first task. */
 	vPortStartFirstTask();
+    // call this instead of the "cpsie i" commented out in the vPortStartFirstTask()
+#ifdef HACK
+    portENABLE_INTERRUPTS();
+#endif
 
 	/* Should never get here as the tasks will now be executing!  Call the task
 	exit error function to prevent compiler warnings about a static function
@@ -268,14 +279,41 @@ void vPortExitCritical( void )
         portENABLE_INTERRUPTS();
     }
 }
+
+
+void vPortDisableInterrupts() {
+
+    sd_nvic_critical_region_enter(&g_is_nested_critical_region);
+    g_count_nested_critical_region += g_is_nested_critical_region;
+
+    // used to be
+    //__asm volatile 	( " cpsid i " );
+
+}
+
+void vPortEnableInterrupts()	{
+    sd_nvic_critical_region_exit(uxCriticalNesting); // using g_count_nested_critical_region would be duplicate
+    //could as well be sd_nvic_critical_region_exit(0);
+
+    if(g_count_nested_critical_region) {
+        // test, for debugger breakpoint
+        g_count_nested_critical_region -= 1;
+    }
+    // used to be
+    //__asm volatile 	( " cpsie i " );
+
+}
+
 /*-----------------------------------------------------------*/
 
 uint32_t ulSetInterruptMaskFromISR( void )
 {
+
 	__asm volatile(
 					" mrs r0, PRIMASK	\n"
+/*
 					" cpsid i			\n"
-					" bx lr				  "
+*/					" bx lr				  "
 				  );
 
 	/* To avoid compiler warnings.  This line will never be reached. */
@@ -285,6 +323,7 @@ uint32_t ulSetInterruptMaskFromISR( void )
 
 void vClearInterruptMaskFromISR( uint32_t ulMask )
 {
+
 	__asm volatile(
 					" msr PRIMASK, r0	\n"
 					" bx lr				  "
@@ -293,6 +332,7 @@ void vClearInterruptMaskFromISR( uint32_t ulMask )
 	/* Just to avoid compiler warning. */
 	( void ) ulMask;
 }
+
 /*-----------------------------------------------------------*/
 
 void xPortPendSVHandler( void )
@@ -316,9 +356,9 @@ void xPortPendSVHandler( void )
 	" 	stmia r0!, {r4-r7}              	\n"
 	"										\n"
 	"	push {r3, r14}						\n"
-	"	cpsid i								\n"
+/*	"	cpsid i								\n"*/
 	"	bl vTaskSwitchContext				\n"
-	"	cpsie i								\n"
+/*	"	cpsie i								\n"*/
 	"	pop {r2, r3}						\n" /* lr goes in r3. r2 now holds tcb pointer. */
 	"										\n"
 	"	ldr r1, [r2]						\n"
@@ -369,6 +409,7 @@ uint32_t ulPreviousMask;
 void prvSetupTimerInterrupt( void )
 {
 #if 0
+// initial tests, now this is set up in the application code timers_init()
   NRF_RTC0->PRESCALER = ( configCPU_CLOCK_HZ / configTICK_RATE_HZ ) - 1;
   NVIC_SetPriority(RTC0_IRQn, 3);
   NRF_RTC0->INTENSET = RTC_INTENSET_TICK_Msk;
