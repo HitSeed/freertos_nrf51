@@ -7,8 +7,9 @@ This is a new port of the FreeRTOS (V8.2.1) for the Nordic Semiconductor nRF51x2
 
 Install both http://sourceforge.net/projects/freertos/files/FreeRTOS/V8.2.1/ and
 https://developer.nordicsemi.com/nRF51_SDK/nRF51_SDK_v8.x.x/
-under a same directory. In that same directory untar this package (tar xzvf freertos_nrf51.tgz).
-Untarring does not replace anything, it just adds two new directories under ./FreeRTOSV8.2.1/: the actual port and a demo app.
+under a same directory.
+Recursively merge the files in this repository with the directory ./FreeRTOSV8.2.1
+This does not replace anything, it just adds two new directories under ./FreeRTOSV8.2.1/: the actual port and a demo app.
 
 You need to have the GCC ARM Toolchain (arm-eabi-none-gcc, etc.) installed.
 Configure the path of the GCC ARM installation in the file nRF51_SDK_8/components/toolchain/gcc/Makefile.posix or nRF51_SDK_8/components/toolchain/gcc/Makefile.windows.
