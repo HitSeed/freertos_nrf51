@@ -283,24 +283,34 @@ void vPortExitCritical( void )
 
 void vPortDisableInterrupts() {
 
-    sd_nvic_critical_region_enter(&g_is_nested_critical_region);
+    uint32_t err_code = sd_nvic_critical_region_enter(&g_is_nested_critical_region);
     g_count_nested_critical_region += g_is_nested_critical_region;
 
+  if (err_code != NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
+    __asm volatile 	( " cpsid i " );
+  } else {
+    APP_ERROR_CHECK(err_code);
+  }
     // used to be
-    //__asm volatile 	( " cpsid i " );
 
 }
 
 void vPortEnableInterrupts()	{
-    sd_nvic_critical_region_exit(uxCriticalNesting); // using g_count_nested_critical_region would be duplicate
+    uint32_t err_code = sd_nvic_critical_region_exit(uxCriticalNesting); // using g_count_nested_critical_region would be duplicate
     //could as well be sd_nvic_critical_region_exit(0);
 
+  if (err_code != NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
+    __asm volatile 	( " cpsie i " );
+  } else {
+    APP_ERROR_CHECK(err_code);
+  }
+
+/*
     if(g_count_nested_critical_region) {
         // test, for debugger breakpoint
         g_count_nested_critical_region -= 1;
     }
-    // used to be
-    //__asm volatile 	( " cpsie i " );
+*/
 
 }
 
