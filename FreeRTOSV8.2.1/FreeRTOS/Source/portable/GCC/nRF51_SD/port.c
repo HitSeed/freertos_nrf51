@@ -268,26 +268,6 @@ void vPortYield( void )
 }
 /*-----------------------------------------------------------*/
 
-void vPortEnterCritical( void )
-{
-    nRF51DisableInterrupts();
-    uxCriticalNesting++;
-	__asm volatile( "dsb" );
-	__asm volatile( "isb" );
-}
-
-void vPortExitCritical( void )
-{
-	configASSERT( uxCriticalNesting );
-    uxCriticalNesting--;
-    if( uxCriticalNesting == 0 )
-    {
-        nRF51EnableInterrupts();
-    }
-}
-
-/*-----------------------------------------------------------*/
-
 void nRF51DisableInterrupts() {
 
 #ifdef CPSI_INTERRUPT_DISABLE
@@ -322,6 +302,26 @@ void nRF51EnableInterrupts()	{
 
 #endif // CPSI_INTERRUPT_DISABLE
 
+}
+
+/*-----------------------------------------------------------*/
+
+void vPortEnterCritical( void )
+{
+    nRF51DisableInterrupts();
+    uxCriticalNesting++;
+	__asm volatile( "dsb" );
+	__asm volatile( "isb" );
+}
+
+void vPortExitCritical( void )
+{
+	configASSERT( uxCriticalNesting );
+    uxCriticalNesting--;
+    if( uxCriticalNesting == 0 )
+    {
+        nRF51EnableInterrupts();
+    }
 }
 
 /*-----------------------------------------------------------*/
