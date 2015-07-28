@@ -79,18 +79,25 @@
 #include "nrf.h"
 #include "softdevice_handler.h"
 
+// Should not really use cspid/cspie, but IF using the PWM,
+// softdevice interrupt disabling fails and cspid/cspie seems to be more reliable.
+//#define CPSI_INTERRUPT_DISABLE
+
 //#define HACK
 
 
 /* Constants required to manipulate the NVIC. */
-#if 0
+
+/*
+# These are from the original ARM_CM0/portmacro.h. nRF51 does not have SYSTICK so leaving these out
 #define portNVIC_SYSTICK_CTRL		( ( volatile uint32_t *) 0xe000e010 )
 #define portNVIC_SYSTICK_LOAD		( ( volatile uint32_t *) 0xe000e014 )
 #define portNVIC_SYSTICK_CLK		0x00000004
 #define portNVIC_SYSTICK_INT		0x00000002
 #define portNVIC_SYSTICK_ENABLE		0x00000001
 #define portNVIC_SYSTICK_PRI		( portMIN_INTERRUPT_PRIORITY << 24UL )
-#endif
+*/
+
 #define portNVIC_INT_CTRL			( ( volatile uint32_t *) 0xe000ed04 )
 #define portNVIC_SYSPRI2			( ( volatile uint32_t *) 0xe000ed20 )
 #define portNVIC_PENDSVSET			0x10000000
@@ -109,7 +116,7 @@ debugger. */
 	#define portTASK_RETURN_ADDRESS	prvTaskExitError
 #endif
 
-uint8_t g_is_nested_critical_region = 0, g_count_nested_critical_region = 0;
+uint8_t g_is_nested_critical_region = 0;
 
 /* Each task maintains its own interrupt status in the critical nesting
 variable. */
@@ -263,12 +270,11 @@ void vPortYield( void )
 
 void vPortEnterCritical( void )
 {
-    portDISABLE_INTERRUPTS();
+    nRF51DisableInterrupts();
     uxCriticalNesting++;
 	__asm volatile( "dsb" );
 	__asm volatile( "isb" );
 }
-/*-----------------------------------------------------------*/
 
 void vPortExitCritical( void )
 {
@@ -276,54 +282,65 @@ void vPortExitCritical( void )
     uxCriticalNesting--;
     if( uxCriticalNesting == 0 )
     {
-        portENABLE_INTERRUPTS();
+        nRF51EnableInterrupts();
     }
 }
 
+/*-----------------------------------------------------------*/
 
-void vPortDisableInterrupts() {
+void nRF51DisableInterrupts() {
 
+#ifdef CPSI_INTERRUPT_DISABLE
+    __asm volatile 	( " cpsid i " );
+#else
     uint32_t err_code = sd_nvic_critical_region_enter(&g_is_nested_critical_region);
-    g_count_nested_critical_region += g_is_nested_critical_region;
 
-  if (err_code != NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
+  if (err_code == NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
     __asm volatile 	( " cpsid i " );
   } else {
     APP_ERROR_CHECK(err_code);
   }
-    // used to be
+#endif // CPSI_INTERRUPT_DISABLE
 
 }
 
-void vPortEnableInterrupts()	{
-    uint32_t err_code = sd_nvic_critical_region_exit(uxCriticalNesting); // using g_count_nested_critical_region would be duplicate
-    //could as well be sd_nvic_critical_region_exit(0);
+void nRF51EnableInterrupts()	{
+#ifdef CPSI_INTERRUPT_DISABLE
+    __asm volatile 	( " cpsie i " );
+#else
+// testing alternatives
+//    uint32_t err_code = sd_nvic_critical_region_exit(g_is_nested_critical_region);
+//    uint32_t err_code = sd_nvic_critical_region_exit(uxCriticalNesting);
+    uint32_t err_code = sd_nvic_critical_region_exit(0);
 
-  if (err_code != NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
+  if (err_code == NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
     __asm volatile 	( " cpsie i " );
   } else {
     APP_ERROR_CHECK(err_code);
+    g_is_nested_critical_region = 0;
   }
 
-/*
-    if(g_count_nested_critical_region) {
-        // test, for debugger breakpoint
-        g_count_nested_critical_region -= 1;
-    }
-*/
+#endif // CPSI_INTERRUPT_DISABLE
 
 }
 
 /*-----------------------------------------------------------*/
+
+#define NFR51_INTERRUPTS
 
 uint32_t ulSetInterruptMaskFromISR( void )
 {
 
 	__asm volatile(
 					" mrs r0, PRIMASK	\n"
+#ifdef NFR51_INTERRUPTS
 /*
-					" cpsid i			\n"
-*/					" bx lr				  "
+                    "	bl vPortDisableInterrupts			\n"
+*/
+#else
+                    "	cpsid i								\n"
+#endif // NFR51_INTERRUPTS
+					" bx lr				  "
 				  );
 
 	/* To avoid compiler warnings.  This line will never be reached. */
@@ -366,9 +383,17 @@ void xPortPendSVHandler( void )
 	" 	stmia r0!, {r4-r7}              	\n"
 	"										\n"
 	"	push {r3, r14}						\n"
-/*	"	cpsid i								\n"*/
+#ifdef NFR51_INTERRUPTS
+	"	bl vPortEnterCritical			\n"
+#else
+	"	cpsid i								\n"
+#endif // NFR51_INTERRUPTS
 	"	bl vTaskSwitchContext				\n"
-/*	"	cpsie i								\n"*/
+#ifdef NFR51_INTERRUPTS
+	"	bl vPortExitCritical			\n"
+#else
+	"	cpsie i								\n"
+#endif // NFR51_INTERRUPTS
 	"	pop {r2, r3}						\n" /* lr goes in r3. r2 now holds tcb pointer. */
 	"										\n"
 	"	ldr r1, [r2]						\n"
@@ -397,8 +422,6 @@ void xPortSysTickHandler( void )
 {
 uint32_t ulPreviousMask;
 
-//    NRF_RTC0->EVENTS_TICK = 0;
-
 	ulPreviousMask = portSET_INTERRUPT_MASK_FROM_ISR();
 	{
 		/* Increment the RTOS tick. */
@@ -410,25 +433,14 @@ uint32_t ulPreviousMask;
 	}
 	portCLEAR_INTERRUPT_MASK_FROM_ISR( ulPreviousMask );
 }
+
 /*-----------------------------------------------------------*/
 
-/*
- * Setup the systick timer to generate the tick interrupts at the required
- * frequency.
- */
+// Instead of starting a FreeRTOS Systick timer here,
+// this port relies on application setting up a nFR51 timer for this
+
 void prvSetupTimerInterrupt( void )
 {
-#if 0
-// initial tests, now this is set up in the application code timers_init()
-  NRF_RTC0->PRESCALER = ( configCPU_CLOCK_HZ / configTICK_RATE_HZ ) - 1;
-  NVIC_SetPriority(RTC0_IRQn, 3);
-  NRF_RTC0->INTENSET = RTC_INTENSET_TICK_Msk;
-
-  NVIC_ClearPendingIRQ(RTC0_IRQn);
-  NVIC_EnableIRQ(RTC0_IRQn);
-
-  NRF_RTC0->TASKS_START = 1;
-#endif
 }
 /*-----------------------------------------------------------*/
 

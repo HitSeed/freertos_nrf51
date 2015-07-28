@@ -138,16 +138,16 @@ extern void vClearInterruptMaskFromISR( uint32_t ulMask )  __attribute__((naked)
 void vPortDisableInterrupts();
 void vPortEnableInterrupts();
 
-extern uint8_t 	g_is_nested_critical_region, g_count_nested_critical_region;
+extern uint8_t 	g_is_nested_critical_region;
+
+#define portENTER_CRITICAL()					vPortEnterCritical()
+#define portEXIT_CRITICAL()						vPortExitCritical()
 
 #define portSET_INTERRUPT_MASK_FROM_ISR()		ulSetInterruptMaskFromISR()
 #define portCLEAR_INTERRUPT_MASK_FROM_ISR(x)	vClearInterruptMaskFromISR( x )
 
-#define portDISABLE_INTERRUPTS()				vPortDisableInterrupts()
-#define portENABLE_INTERRUPTS()					vPortEnableInterrupts()
-
-#define portENTER_CRITICAL()					vPortEnterCritical()
-#define portEXIT_CRITICAL()						vPortExitCritical()
+#define portDISABLE_INTERRUPTS()				vPortEnterCritical()
+#define portENABLE_INTERRUPTS()					vPortExitCritical()
 
 /*-----------------------------------------------------------*/
 
