@@ -263,15 +263,8 @@ void vPortYield( void )
 
 void vPortEnterCritical( void )
 {
-#if 0
-    if( uxCriticalNesting++ == 0 )
-    {
-        portDISABLE_INTERRUPTS();
-    }
-#else
     portDISABLE_INTERRUPTS();
     uxCriticalNesting++;
-#endif
 	__asm volatile( "dsb" );
 	__asm volatile( "isb" );
 }
